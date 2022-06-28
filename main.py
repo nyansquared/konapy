@@ -24,11 +24,9 @@ TODO:
 """
 
 # Init logger for aiogram
-logging.basicConfig(level=logging.INFO)
-
+logging.basicConfig(level=logging.DEBUG)
 
 tgTokenName = "KONACHAN_NYA_TGTOKEN"
-workDirPath = "KONACHAN_NYA_WD"
 
 # Get telegram api token form the environment variable
 tgToken = os.environ.get(f"{tgTokenName}")
@@ -39,17 +37,6 @@ if not tgToken:
         f"ERROR: unable to get {tgTokenName} environment variable! :(\n"
     )
     exit(2)
-
-# Get images local store location
-workDir = os.environ.get(f"{workDirPath}")
-
-if not workDir:
-    workDir = '/tmp/konachan_nya'
-
-try:
-    os.mkdir(workDir)
-except FileExistsError as e:
-    sys.stderr.write(f"{workDir} already exists... continuing\n") 
 
 bot = Bot(token=tgToken)
 dp = Dispatcher(bot)
@@ -81,9 +68,7 @@ async def respond_help(message: types.Message):
     msg =\
         "/start - Давай начнем!\n"\
         + "/help - Выведу список того, что я умею\n"\
-        + "\n"\
-        + "Пришлю пикчи c work safe коначан:\n"\
-        + "/getpics\n"
+        + "/getpics - Пришлю пикчи c worksafe коначан\n"
     await message.reply(msg)
 
 @dp.message_handler(commands=['getpics'])
@@ -91,24 +76,19 @@ async def respond_getpics(message: types.Message):
     """
     /getpics - get pictures from konachan.net
     """
-
-    tmpDirName = uuid.uuid4().hex
-    tmpDirPath = f"{workDir}/{tmpDirName}"
     
-    # create tmp dir
-    os.mkdir(tmpDirPath)
+    await message.reply("Выбираю пикчи для тебя. Подожди, пожалуйста 😳")
 
-    await message.reply("Скачиваю пикчи для тебя. Подожди, пожалуйста 😳")    
+    # get picture urls
+    wgetProc = subprocess.Popen(f"wget --spider -nd -e robots=off -r -H -A jpg,jpeg https://konachan.net/post?tags=order%3Arandom --accept-regex '.+Konachan\.com.+' 2>&1 | egrep -o '(https://.*\.jpg)|(https://.*\.jpeg)'", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     
-    # fetch pictures
-    wgetProc = subprocess.Popen(f"wget -P {tmpDirPath} -nd -e robots=off -r -H -A png,gif,jpg,jpeg,webm https://konachan.net/post?tags=order%3Arandom --accept-regex '.+Konachan\.com.+'", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     out, err = wgetProc.communicate()
 
-    picNames = os.listdir(tmpDirPath)
-    for picName in picNames:
+    picUrls = out.decode('utf-8').split('\n')
+    for picUrl in picUrls:
         await types.ChatActions.upload_photo()
         media = types.MediaGroup()
-        media.attach_photo(types.InputFile(f"{tmpDirPath}/{picName}"))
+        media.attach_photo(f"{picUrl}")
         try:
             await message.reply_media_group(media=media)
         except Exception as e:
@@ -117,9 +97,7 @@ async def respond_getpics(message: types.Message):
         # Sleep for 1 second to not blow up tg chat
         time.sleep(1)
     
-    # Delete tmp dir with all contents
-    shutil.rmtree(tmpDirPath, ignore_errors=False, onerror=None)
-    await message.reply("Отправил тебе все, что скачал. Если хочешь еще, напиши /getpics 😳")
+    await message.reply("Отправил тебе все, что выбрал. Если хочешь еще, напиши /getpics 😳")
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
