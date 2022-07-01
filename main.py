@@ -4,11 +4,13 @@ import asyncio
 import sys
 import os
 import time
+import re
 import logging
 import uuid
 import subprocess
-import shutil
+import requests
 
+from bs4 import BeautifulSoup
 from aiogram import Bot, Dispatcher, executor, types
 
 """
@@ -47,11 +49,12 @@ async def respond_start(message: types.Message):
     """
     /start
     """
+
     me = await bot.get_me()
     await message.reply(
         "Привет, братик! 😳\n"
         + "Надеюсь мы подружимся!\n"
-        + "Напиши мне \"/help\", чтобы узнать, что я умею 👉👈"
+        + "Напиши мне /help, чтобы узнать, что я умею 👉👈"
     )
 
 @dp.message_handler(commands=['ping'])
@@ -65,26 +68,48 @@ async def respond_ping(message: types.Message):
 
 @dp.message_handler(commands=['help'])
 async def respond_help(message: types.Message):
-    msg =\
-        "/start - Давай начнем!\n"\
-        + "/help - Выведу список того, что я умею\n"\
-        + "/getpics - Пришлю пикчи c worksafe коначан\n"
-    await message.reply(msg)
+    answer =\
+        "/help - Выведу список того, что я умею\n"\
+        + "/getpics - Пришлю пикчи c worksafe коначан\n"\
+        + "`/getpics tag another_tag` - Пришлю пикчи с коначан по тэгам, указанным через пробел\n"
+
+    await message.reply(answer, parse_mode="Markdown")
 
 @dp.message_handler(commands=['getpics'])
 async def respond_getpics(message: types.Message):
+    url = "https://konachan.net/post"
     """
     /getpics - get pictures from konachan.net
     """
-    
-    await message.reply("Выбираю пикчи для тебя. Подожди, пожалуйста 😳")
+    picture_tags = tuple(message.get_args().split())
 
-    # get picture urls
-    wgetProc = subprocess.Popen(f"wget --spider -nd -e robots=off -r -H -A jpg,jpeg https://konachan.net/post?tags=order%3Arandom --accept-regex '.+Konachan\.com.+' 2>&1 | egrep -o '(https://.*\.jpg)|(https://.*\.jpeg)'", shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    
-    out, err = wgetProc.communicate()
+    if not picture_tags:
+        answer = "Выбираю пикчи для тебя. Подожди, пожалуйста. 😳"
+    else:
+        answer = "Выбираю пикчи для тебя по тэгам:\n"\
+                + "`"\
+                + " ".join(picture_tags)\
+                + "`\n\n"\
+                + "Подожди, пожалуйста. 😳"
 
-    picUrls = out.decode('utf-8').split('\n')
+    await message.reply(answer, parse_mode="Markdown")
+
+    picUrls = await get_picture_urls(url, picture_tags)
+
+    if not picUrls:
+        await asyncio.sleep(2);
+        if picture_tags:
+            answer = "Прости, не удалось ничего найти. 😢\n"\
+                    + "Если хочешь, чтобы я попробовал еще, напиши:\n"\
+                    + "`"\
+                    + "/getpics "\
+                    + " ".join(picture_tags)\
+                    + "`"
+        else:
+            answer = "Прости, не удалось ничего найти. 😢"
+        await message.reply(answer, parse_mode="Markdown")
+        return
+
     for picUrl in picUrls:
         await types.ChatActions.upload_photo()
         media = types.MediaGroup()
@@ -95,9 +120,33 @@ async def respond_getpics(message: types.Message):
             continue
  
         # Sleep for 1 second to not blow up tg chat
-        time.sleep(1)
-    
-    await message.reply("Отправил тебе все, что выбрал. Если хочешь еще, напиши /getpics 😳")
+        await asyncio.sleep(1)
+
+    if not picture_tags:
+        answer = "Отправил тебе все, что нашёл. Если хочешь еще, напиши /getpics 😳"
+    else:
+        answer = "Отправил тебе все, что нашёл. 😳\n"\
+                + "Если хочешь еще, напиши:\n"\
+                + "`"\
+                + "/getpics "\
+                + " ".join(picture_tags)\
+                + "`"
+
+    await message.reply(answer, parse_mode="Markdown")
+
+async def get_picture_urls(url, picture_tags):
+    params = {"tags": " ".join(picture_tags + ("order:random",))}
+
+    # fetch
+    request_web_page = requests.get(url, params=params)
+
+    if (request_web_page.status_code == 200):
+        soup = BeautifulSoup(request_web_page.text, "html.parser")
+        picture_links = tuple(link.get("href") for link in soup.select(".directlink"))
+    else:
+        picture_links = ()
+
+    return picture_links
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
