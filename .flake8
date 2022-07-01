@@ -1,0 +1,8 @@
+[flake8]
+ignore =
+    W391,  # Blank line at end of file
+    W503   # Line break before binary operator
+exclude = env/
+max-line-length = 128
+inline-quotes = "
+multiline-quotes = "

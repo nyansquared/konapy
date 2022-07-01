@@ -4,26 +4,11 @@ import asyncio
 import sys
 import os
 import time
-import re
 import logging
-import uuid
-import subprocess
 import requests
 
 from bs4 import BeautifulSoup
 from aiogram import Bot, Dispatcher, executor, types
-
-"""
-TODO:
-    - Bot service commands:
-        + /start
-        + /help
-        + /ping
-
-    - Functionality
-        + /getpic
-        + ...
-"""
 
 # Init logger for aiogram
 logging.basicConfig(level=logging.DEBUG)
@@ -43,6 +28,7 @@ if not tgToken:
 bot = Bot(token=tgToken)
 dp = Dispatcher(bot)
 
+
 # Service commands #
 @dp.message_handler(commands=['start'])
 async def respond_start(message: types.Message):
@@ -50,12 +36,12 @@ async def respond_start(message: types.Message):
     /start
     """
 
-    me = await bot.get_me()
     await message.reply(
         "Привет, братик! 😳\n"
         + "Надеюсь мы подружимся!\n"
         + "Напиши мне /help, чтобы узнать, что я умею 👉👈"
     )
+
 
 @dp.message_handler(commands=['ping'])
 async def respond_ping(message: types.Message):
@@ -66,6 +52,7 @@ async def respond_ping(message: types.Message):
 
     await message.reply(f"Я готов исполнять команды 😳\n{time.asctime()}")
 
+
 @dp.message_handler(commands=['help'])
 async def respond_help(message: types.Message):
     answer =\
@@ -74,6 +61,7 @@ async def respond_help(message: types.Message):
         + "`/getpics tag another_tag` - Пришлю пикчи с коначан по тэгам, указанным через пробел\n"
 
     await message.reply(answer, parse_mode="Markdown")
+
 
 @dp.message_handler(commands=['getpics'])
 async def respond_getpics(message: types.Message):
@@ -87,24 +75,24 @@ async def respond_getpics(message: types.Message):
         answer = "Выбираю пикчи для тебя. Подожди, пожалуйста. 😳"
     else:
         answer = "Выбираю пикчи для тебя по тэгам:\n"\
-                + "`"\
-                + " ".join(picture_tags)\
-                + "`\n\n"\
-                + "Подожди, пожалуйста. 😳"
+            + "`"\
+            + " ".join(picture_tags)\
+            + "`\n\n"\
+            + "Подожди, пожалуйста. 😳"
 
     await message.reply(answer, parse_mode="Markdown")
 
     picUrls = await get_picture_urls(url, picture_tags)
 
     if not picUrls:
-        await asyncio.sleep(2);
+        await asyncio.sleep(2)
         if picture_tags:
             answer = "Прости, не удалось ничего найти. 😢\n"\
-                    + "Если хочешь, чтобы я попробовал еще, напиши:\n"\
-                    + "`"\
-                    + "/getpics "\
-                    + " ".join(picture_tags)\
-                    + "`"
+                + "Если хочешь, чтобы я попробовал еще, напиши:\n"\
+                + "`"\
+                + "/getpics "\
+                + " ".join(picture_tags)\
+                + "`"
         else:
             answer = "Прости, не удалось ничего найти. 😢"
         await message.reply(answer, parse_mode="Markdown")
@@ -116,9 +104,9 @@ async def respond_getpics(message: types.Message):
         media.attach_photo(f"{picUrl}")
         try:
             await message.reply_media_group(media=media)
-        except Exception as e:
+        except Exception:
             continue
- 
+
         # Sleep for 1 second to not blow up tg chat
         await asyncio.sleep(1)
 
@@ -126,13 +114,14 @@ async def respond_getpics(message: types.Message):
         answer = "Отправил тебе все, что нашёл. Если хочешь еще, напиши /getpics 😳"
     else:
         answer = "Отправил тебе все, что нашёл. 😳\n"\
-                + "Если хочешь еще, напиши:\n"\
-                + "`"\
-                + "/getpics "\
-                + " ".join(picture_tags)\
-                + "`"
+            + "Если хочешь еще, напиши:\n"\
+            + "`"\
+            + "/getpics "\
+            + " ".join(picture_tags)\
+            + "`"
 
     await message.reply(answer, parse_mode="Markdown")
+
 
 async def get_picture_urls(url, picture_tags):
     params = {"tags": " ".join(picture_tags + ("order:random",))}
