@@ -13,19 +13,19 @@ from aiogram import Bot, Dispatcher, executor, types
 # Init logger for aiogram
 logging.basicConfig(level=logging.DEBUG)
 
-tgTokenName = "KONACHAN_NYA_TGTOKEN"
+tg_token_name = "KONACHAN_NYA_TGTOKEN"
 
 # Get telegram api token form the environment variable
-tgToken = os.environ.get(f"{tgTokenName}")
+tg_token = os.environ.get(tg_token_name)
 
 # Checking whether token was successfully obtained
-if not tgToken:
+if not tg_token:
     sys.stderr.write(
-        f"ERROR: unable to get {tgTokenName} environment variable! :(\n"
+        f"ERROR: unable to get {tg_token_name} environment variable! :(\n"
     )
     exit(2)
 
-bot = Bot(token=tgToken)
+bot = Bot(token=tg_token)
 dp = Dispatcher(bot)
 
 
@@ -38,8 +38,8 @@ async def respond_start(message: types.Message):
 
     await message.reply(
         "Привет, братик! 😳\n"
-        + "Надеюсь мы подружимся!\n"
-        + "Напиши мне /help, чтобы узнать, что я умею 👉👈"
+        "Надеюсь мы подружимся!\n"
+        "Напиши мне /help, чтобы узнать, что я умею 👉👈"
     )
 
 
@@ -55,10 +55,9 @@ async def respond_ping(message: types.Message):
 
 @dp.message_handler(commands=['help'])
 async def respond_help(message: types.Message):
-    answer =\
-        "/help - Выведу список того, что я умею\n"\
-        + "/getpics - Пришлю пикчи c worksafe коначан\n"\
-        + "`/getpics tag another_tag` - Пришлю пикчи с коначан по тэгам, указанным через пробел\n"
+    answer = "/help - Выведу список того, что я умею\n"
+    answer += "/getpics - Пришлю пикчи c worksafe коначан\n"
+    answer += "`/getpics tag another_tag` - Пришлю пикчи с коначан по тэгам, указанным через пробел\n"
 
     await message.reply(answer, parse_mode="Markdown")
 
@@ -79,25 +78,26 @@ async def respond_getpics(message: types.Message):
         await message.reply(answer, parse_mode="Markdown")
         return
     else:
-        answer = "Выбираю пикчи для тебя по тэгам:\n"\
-            + "`"\
-            + " ".join(input_picture_tags)\
-            + "`\n\n"\
-            + "Подожди, пожалуйста. 😳"
+        answer = "Выбираю пикчи для тебя по тэгам:\n"
+        answer += "`"
+        answer += " ".join(input_picture_tags)
+        answer += "`\n\n"
+        answer += "Подожди, пожалуйста. 😳"
 
     await message.reply(answer, parse_mode="Markdown")
 
-    pictures = await get_picture_urls(url, input_picture_tags)
+    pictures = await get_pictures(url, input_picture_tags)
 
     if not pictures:
         await asyncio.sleep(2)
         if input_picture_tags:
-            answer = "Прости, не удалось ничего найти. 😢\n"\
-                + "Если хочешь, чтобы я попробовал еще, напиши:\n"\
-                + "`"\
-                + "/getpics "\
-                + " ".join(input_picture_tags)\
-                + "`"
+            answer = "Прости, не удалось ничего найти. 😢\n"
+            answer += "Если хочешь, чтобы я попробовал еще, напиши:\n"
+            answer += "`"
+            answer += "/getpics "
+            answer += " ".join(input_picture_tags)
+            answer += "`"
+
         else:
             answer = "Прости, не удалось ничего найти. 😢"
         await message.reply(answer, parse_mode="Markdown")
@@ -106,7 +106,7 @@ async def respond_getpics(message: types.Message):
     for picture_url, picture_tags in pictures:
         await types.ChatActions.upload_photo()
         media = types.MediaGroup()
-        media.attach_photo(f"{picture_url}", caption=f"тэги: `{'`  `'.join(picture_tags.split())}`", parse_mode="Markdown")
+        media.attach_photo(picture_url, caption=f"тэги: `{'`  `'.join(picture_tags.split())}`", parse_mode="Markdown")
         try:
             await message.reply_media_group(media=media)
         except Exception:
@@ -118,17 +118,17 @@ async def respond_getpics(message: types.Message):
     if not input_picture_tags:
         answer = "Отправил тебе все, что нашёл. Если хочешь еще, напиши /getpics 😳"
     else:
-        answer = "Отправил тебе все, что нашёл. 😳\n"\
-            + "Если хочешь еще, напиши:\n"\
-            + "`"\
-            + "/getpics "\
-            + " ".join(input_picture_tags)\
-            + "`"
+        answer = "Отправил тебе все, что нашёл. 😳\n"
+        answer += "Если хочешь еще, напиши:\n"
+        answer += "`"
+        answer += "/getpics "
+        answer += " ".join(input_picture_tags)
+        answer += "`"
 
     await message.reply(answer, parse_mode="Markdown")
 
 
-async def get_picture_urls(url, input_picture_tags):
+async def get_pictures(url, input_picture_tags):
     params = {"tags": " ".join(input_picture_tags + ("order:random",))}
 
     # fetch
