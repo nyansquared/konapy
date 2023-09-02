@@ -1,23 +1,12 @@
-FROM archlinux/archlinux
+FROM alpine:latest AS builder
+RUN apk add python3 py3-pip
+RUN pip install -U build
+RUN mkdir /kona
+COPY . /kona
+RUN cd /kona && python -m build .
 
-RUN pacman -Sy --noconfirm python python-pip
-
-RUN mkdir /konabot
-
-COPY main.py /konabot
-
-COPY requirements.txt /konabot
-
-WORKDIR /konabot
-
-RUN mkdir /konabot/.env
-
-RUN python -m venv /konabot/.env
-
-RUN . /konabot/.env/bin/activate && pip install -r /konabot/requirements.txt
-
-COPY entrypoint.sh /entrypoint.sh
-
-RUN chmod +x /entrypoint.sh
-
-ENTRYPOINT /entrypoint.sh
+FROM alpine:latest
+RUN apk add python3 py3-pip
+COPY --from=builder /kona/dist/konapy-*.whl /tmp
+RUN pip install -U /tmp/konapy-*.whl
+CMD kona
